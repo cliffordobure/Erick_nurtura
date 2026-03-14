@@ -1,8 +1,16 @@
+import mongoose from 'mongoose';
 import express from 'express';
 import User from '../models/User.js';
 import Child from '../models/Child.js';
 import Class from '../models/Class.js';
 import { auth, schoolAdmin } from '../middleware/auth.js';
+
+function toObjectIds(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .filter(id => id != null && mongoose.Types.ObjectId.isValid(id.toString()))
+    .map(id => new mongoose.Types.ObjectId(id.toString()));
+}
 
 const router = express.Router();
 
@@ -113,7 +121,7 @@ router.post('/students', async (req, res) => {
       lastName,
       dateOfBirth: dateOfBirth || undefined,
       classId: classId || undefined,
-      parentIds: parentIds && Array.isArray(parentIds) ? parentIds : [],
+      parentIds: parentIds && Array.isArray(parentIds) ? toObjectIds(parentIds) : [],
       schoolId: req.user.schoolId,
       allergies: allergies && Array.isArray(allergies) ? allergies : [],
       notes: notes || undefined,
@@ -135,7 +143,7 @@ router.patch('/students/:id', async (req, res) => {
     if (lastName !== undefined) child.lastName = lastName;
     if (dateOfBirth !== undefined) child.dateOfBirth = dateOfBirth;
     if (classId !== undefined) child.classId = classId;
-    if (parentIds !== undefined && Array.isArray(parentIds)) child.parentIds = parentIds;
+    if (parentIds !== undefined && Array.isArray(parentIds)) child.parentIds = toObjectIds(parentIds);
     if (allergies !== undefined && Array.isArray(allergies)) child.allergies = allergies;
     if (notes !== undefined) child.notes = notes;
     await child.save();

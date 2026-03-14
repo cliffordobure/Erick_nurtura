@@ -1,4 +1,7 @@
 import 'dotenv/config';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
@@ -17,6 +20,9 @@ import messageRoutes from './routes/messages.js';
 import requestRoutes from './routes/requests.js';
 import schoolRoutes from './routes/schools.js';
 import schoolAdminRoutes from './routes/schoolAdmin.js';
+import uploadRoutes from './routes/upload.js';
+import activityRoutes from './routes/activities.js';
+import { runActivityReminders } from './jobs/activityReminders.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -26,6 +32,11 @@ const io = new Server(httpServer, {
 
 app.use(cors());
 app.use(express.json());
+app.use('/api/uploads', express.static(uploadsDir));
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const uploadsDir = path.join(__dirname, '..', 'uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
 await connectDB();
 await seedSystemAdmin();
@@ -45,8 +56,13 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/requests', requestRoutes);
 app.use('/api/schools', schoolRoutes);
 app.use('/api/school-admin', schoolAdminRoutes);
+app.use('/api/upload', uploadRoutes);
+app.use('/api/activities', activityRoutes);
 
 app.get('/api/health', (_, res) => res.json({ ok: true }));
+
+// Activity reminder job: every 60s check for due activities and notify parents
+setInterval(() => runActivityReminders(io).catch(console.error), 60 * 1000);
 
 // Socket: notify users (e.g. by userId or role)
 io.on('connection', (socket) => {

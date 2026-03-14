@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import express from 'express';
 import Child from '../models/Child.js';
+import Class from '../models/Class.js';
 import { auth, role } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -10,7 +11,17 @@ router.get('/', auth, async (req, res) => {
     let query = {};
     if (req.user.role === 'parent') {
       const raw = req.user._id;
-      query.parentIds = raw && mongoose.Types.ObjectId.isValid(raw.toString()) ? new mongoose.Types.ObjectId(raw.toString()) : raw;
+      const idStr = raw?.toString?.();
+      if (idStr && mongoose.Types.ObjectId.isValid(idStr)) {
+        const oid = new mongoose.Types.ObjectId(idStr);
+        query.$or = [{ parentIds: oid }, { parentIds: idStr }];
+      } else {
+        query.parentIds = raw;
+      }
+    } else if (req.user.role === 'teacher') {
+      const myClassIds = (await Class.find({ teacherId: req.user._id }).select('_id').lean()).map(c => c._id);
+      if (myClassIds.length) query.classId = { $in: myClassIds };
+      else query.classId = { $in: [] };
     } else if (req.user.schoolId) {
       query.schoolId = req.user.schoolId;
     }
