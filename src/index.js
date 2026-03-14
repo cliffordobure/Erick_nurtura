@@ -4,6 +4,7 @@ import cors from 'cors';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import connectDB from './config/db.js';
+import seedSystemAdmin from './config/seed.js';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
 import childRoutes from './routes/children.js';
@@ -14,6 +15,8 @@ import transportRoutes from './routes/transport.js';
 import notificationRoutes from './routes/notifications.js';
 import messageRoutes from './routes/messages.js';
 import requestRoutes from './routes/requests.js';
+import schoolRoutes from './routes/schools.js';
+import schoolAdminRoutes from './routes/schoolAdmin.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -24,7 +27,8 @@ const io = new Server(httpServer, {
 app.use(cors());
 app.use(express.json());
 
-connectDB();
+await connectDB();
+await seedSystemAdmin();
 
 // Real-time: attach io to req for use in routes
 app.set('io', io);
@@ -39,6 +43,8 @@ app.use('/api/transport', transportRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/requests', requestRoutes);
+app.use('/api/schools', schoolRoutes);
+app.use('/api/school-admin', schoolAdminRoutes);
 
 app.get('/api/health', (_, res) => res.json({ ok: true }));
 

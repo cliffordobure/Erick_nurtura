@@ -27,3 +27,21 @@ export function role(...roles) {
     next();
   };
 }
+
+/** Only users with role admin and no schoolId (system admin) can access */
+export function systemAdmin(req, res, next) {
+  if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+  if (req.user.role !== 'admin' || req.user.schoolId) {
+    return res.status(403).json({ error: 'System admin only' });
+  }
+  next();
+}
+
+/** Only users with role school_admin and a schoolId can access */
+export function schoolAdmin(req, res, next) {
+  if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+  if (req.user.role !== 'school_admin' || !req.user.schoolId) {
+    return res.status(403).json({ error: 'School admin only' });
+  }
+  next();
+}
