@@ -15,7 +15,7 @@ router.get('/', auth, async (req, res) => {
       query.$or = [{ classId: { $in: classIds } }, { classId: null }];
     } else {
       if (req.user.schoolId) query.schoolId = req.user.schoolId;
-      if (req.user.role === 'teacher') {
+      if (req.user.role === 'teacher' || req.user.role === 'caretaker') {
         const teacherClassIds = (await Class.find({ teacherId: req.user._id }).select('_id')).map(c => c._id);
         query.$or = [{ authorId: req.user._id }, { classId: { $in: teacherClassIds } }];
       }
@@ -27,7 +27,7 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-router.post('/', auth, role('teacher', 'admin'), async (req, res) => {
+router.post('/', auth, role('teacher', 'caretaker', 'admin'), async (req, res) => {
   try {
     const post = await Post.create({
       ...req.body,
@@ -51,7 +51,7 @@ router.post('/', auth, role('teacher', 'admin'), async (req, res) => {
   }
 });
 
-router.patch('/:id', auth, role('teacher', 'admin'), async (req, res) => {
+router.patch('/:id', auth, role('teacher', 'caretaker', 'admin'), async (req, res) => {
   try {
     const post = await Post.findOneAndUpdate({ _id: req.params.id, authorId: req.user._id }, req.body, { new: true });
     if (!post) return res.status(404).json({ error: 'Post not found' });
@@ -61,7 +61,7 @@ router.patch('/:id', auth, role('teacher', 'admin'), async (req, res) => {
   }
 });
 
-router.delete('/:id', auth, role('teacher', 'admin'), async (req, res) => {
+router.delete('/:id', auth, role('teacher', 'caretaker', 'admin'), async (req, res) => {
   try {
     const post = await Post.findOneAndDelete({ _id: req.params.id, authorId: req.user._id });
     if (!post) return res.status(404).json({ error: 'Post not found' });

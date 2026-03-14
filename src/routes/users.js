@@ -4,7 +4,7 @@ import { auth, role } from '../middleware/auth.js';
 
 const router = express.Router();
 
-router.get('/', auth, role('teacher', 'admin'), async (req, res) => {
+router.get('/', auth, role('teacher', 'caretaker', 'admin'), async (req, res) => {
   try {
     const filter = req.user.role === 'admin' ? {} : { schoolId: req.user.schoolId };
     const users = await User.find(filter).select('-password').lean();

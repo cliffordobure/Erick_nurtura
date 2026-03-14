@@ -13,7 +13,7 @@ router.get('/', auth, async (req, res) => {
       const childIds = (await Child.find({ parentIds: req.user._id }).select('_id classId')).map(c => c._id);
       const classIds = [...new Set((await Child.find({ parentIds: req.user._id }).select('classId')).map(c => c.classId).filter(Boolean))];
       query.classId = { $in: classIds };
-    } else if (req.user.role === 'teacher') {
+    } else if (req.user.role === 'teacher' || req.user.role === 'caretaker') {
       query.teacherId = req.user._id;
     } else if (req.user.schoolId) {
       const Class = (await import('../models/Class.js')).default;
@@ -27,7 +27,7 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-router.post('/', auth, role('teacher', 'admin'), async (req, res) => {
+router.post('/', auth, role('teacher', 'caretaker', 'admin'), async (req, res) => {
   try {
     const assignment = await Assignment.create({
       ...req.body,
@@ -52,7 +52,7 @@ router.post('/', auth, role('teacher', 'admin'), async (req, res) => {
   }
 });
 
-router.post('/:id/send-reminder', auth, role('teacher', 'admin'), async (req, res) => {
+router.post('/:id/send-reminder', auth, role('teacher', 'caretaker', 'admin'), async (req, res) => {
   try {
     const assignment = await Assignment.findById(req.params.id).populate('classId');
     if (!assignment) return res.status(404).json({ error: 'Assignment not found' });
@@ -77,7 +77,7 @@ router.post('/:id/send-reminder', auth, role('teacher', 'admin'), async (req, re
   }
 });
 
-router.patch('/:id', auth, role('teacher', 'admin'), async (req, res) => {
+router.patch('/:id', auth, role('teacher', 'caretaker', 'admin'), async (req, res) => {
   try {
     const assignment = await Assignment.findOneAndUpdate({ _id: req.params.id, teacherId: req.user._id }, req.body, { new: true });
     if (!assignment) return res.status(404).json({ error: 'Assignment not found' });

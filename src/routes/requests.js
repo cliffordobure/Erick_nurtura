@@ -7,7 +7,7 @@ const router = express.Router();
 
 router.get('/', auth, async (req, res) => {
   try {
-    let query = req.user.role === 'teacher' ? { fromId: req.user._id } : { toId: req.user._id };
+    let query = (req.user.role === 'teacher' || req.user.role === 'caretaker') ? { fromId: req.user._id } : { toId: req.user._id };
     const list = await Request.find(query).populate('fromId', 'name').populate('toId', 'name').populate('childId', 'firstName lastName').sort({ createdAt: -1 }).lean();
     res.json(list);
   } catch (e) {
@@ -15,7 +15,7 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-router.post('/', auth, role('teacher', 'admin'), async (req, res) => {
+router.post('/', auth, role('teacher', 'caretaker', 'admin'), async (req, res) => {
   try {
     const { toId, childId, type, title, body } = req.body;
     if (!toId || !type || !title) return res.status(400).json({ error: 'toId, type and title required' });

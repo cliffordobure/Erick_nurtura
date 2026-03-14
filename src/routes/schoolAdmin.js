@@ -3,6 +3,7 @@ import express from 'express';
 import User from '../models/User.js';
 import Child from '../models/Child.js';
 import Class from '../models/Class.js';
+import School from '../models/School.js';
 import { auth, schoolAdmin } from '../middleware/auth.js';
 
 function toObjectIds(arr) {
@@ -16,10 +17,21 @@ const router = express.Router();
 
 router.use(auth, schoolAdmin);
 
-/** List all users (parents, teachers, drivers) in my school */
+/** Get my school (with type: school | daycare) */
+router.get('/school', async (req, res) => {
+  try {
+    const school = await School.findById(req.user.schoolId).lean();
+    if (!school) return res.status(404).json({ error: 'School not found' });
+    res.json(school);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** List all users (parents, teachers, drivers, caregivers) in my school */
 router.get('/users', async (req, res) => {
   try {
-    const users = await User.find({ schoolId: req.user.schoolId, role: { $in: ['parent', 'teacher', 'driver'] } })
+    const users = await User.find({ schoolId: req.user.schoolId, role: { $in: ['parent', 'teacher', 'driver', 'caretaker'] } })
       .select('-password')
       .sort({ role: 1, name: 1 })
       .lean();
@@ -29,15 +41,18 @@ router.get('/users', async (req, res) => {
   }
 });
 
-/** Create a user (parent, teacher, or driver) in my school – school admin only */
+/** Create a user (parent, teacher, driver, or caretaker) – school admin only. Daycare: parent, caretaker only. */
 router.post('/users', async (req, res) => {
   try {
     const { email, password, name, role, phone, childIds } = req.body;
     if (!email || !password || !name || !role) {
       return res.status(400).json({ error: 'Email, password, name and role required' });
     }
-    if (!['parent', 'teacher', 'driver'].includes(role)) {
-      return res.status(400).json({ error: 'Role must be parent, teacher or driver' });
+    const school = await School.findById(req.user.schoolId).lean();
+    const isDaycare = school?.type === 'daycare';
+    const allowedRoles = isDaycare ? ['parent', 'caretaker'] : ['parent', 'teacher', 'driver'];
+    if (!allowedRoles.includes(role)) {
+      return res.status(400).json({ error: isDaycare ? 'Role must be parent or caretaker for daycare' : 'Role must be parent, teacher or driver' });
     }
     const existing = await User.findOne({ email });
     if (existing) return res.status(400).json({ error: 'Email already registered' });
@@ -65,7 +80,7 @@ router.post('/users', async (req, res) => {
 /** Update a user (parent, teacher, driver) – school admin only */
 router.patch('/users/:id', async (req, res) => {
   try {
-    const user = await User.findOne({ _id: req.params.id, schoolId: req.user.schoolId, role: { $in: ['parent', 'teacher', 'driver'] } });
+    const user = await User.findOne({ _id: req.params.id, schoolId: req.user.schoolId, role: { $in: ['parent', 'teacher', 'driver', 'caretaker'] } });
     if (!user) return res.status(404).json({ error: 'User not found' });
     const { name, phone, newPassword, childIds } = req.body;
     if (name !== undefined) user.name = name;
@@ -172,7 +187,7 @@ router.post('/classes', async (req, res) => {
   try {
     const { name, grade, teacherId } = req.body;
     if (!name) return res.status(400).json({ error: 'Class name required' });
-    const teacher = teacherId ? await User.findOne({ _id: teacherId, schoolId: req.user.schoolId, role: 'teacher' }) : null;
+    const teacher = teacherId ? await User.findOne({ _id: teacherId, schoolId: req.user.schoolId, role: { $in: ['teacher', 'caretaker'] } }) : null;
     const c = await Class.create({
       name,
       grade: grade || undefined,
@@ -195,7 +210,7 @@ router.patch('/classes/:id', async (req, res) => {
     if (name !== undefined) c.name = name;
     if (grade !== undefined) c.grade = grade;
     if (teacherId !== undefined) {
-      c.teacherId = teacherId ? (await User.findOne({ _id: teacherId, schoolId: req.user.schoolId, role: 'teacher' }))?._id : null;
+      c.teacherId = teacherId ? (await User.findOne({ _id: teacherId, schoolId: req.user.schoolId, role: { $in: ['teacher', 'caretaker'] } }))?._id : null;
     }
     await c.save();
     const populated = await Class.findById(c._id).populate('teacherId', 'name email').lean();

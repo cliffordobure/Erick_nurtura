@@ -7,7 +7,7 @@ const router = express.Router();
 router.get('/', auth, async (req, res) => {
   try {
     const filter = req.user.schoolId ? { schoolId: req.user.schoolId } : {};
-    if (req.user.role === 'teacher') filter.teacherId = req.user._id;
+    if (req.user.role === 'teacher' || req.user.role === 'caretaker') filter.teacherId = req.user._id;
     const classes = await Class.find(filter).populate('teacherId', 'name email').lean();
     res.json(classes);
   } catch (e) {
@@ -25,7 +25,7 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-router.post('/', auth, role('teacher', 'admin'), async (req, res) => {
+router.post('/', auth, role('teacher', 'caretaker', 'admin'), async (req, res) => {
   try {
     const doc = await Class.create({ ...req.body, schoolId: req.body.schoolId || req.user.schoolId });
     res.status(201).json(doc);

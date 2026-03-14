@@ -59,6 +59,7 @@ router.post('/onboard', auth, systemAdmin, async (req, res) => {
   try {
     const {
       name,
+      type,
       address,
       phone,
       logo,
@@ -72,11 +73,12 @@ router.post('/onboard', auth, systemAdmin, async (req, res) => {
     if (!adminName || !adminEmail || !adminPassword) {
       return res.status(400).json({ error: 'School admin name, email and password required' });
     }
+    const institutionType = type === 'daycare' ? 'daycare' : 'school';
 
     const existingUser = await User.findOne({ email: adminEmail });
     if (existingUser) return res.status(400).json({ error: 'School admin email already registered' });
 
-    const school = await School.create({ name, address, phone, logo });
+    const school = await School.create({ name, type: institutionType, address, phone, logo });
     const user = await User.create({
       email: adminEmail,
       password: adminPassword,
@@ -90,7 +92,9 @@ router.post('/onboard', auth, systemAdmin, async (req, res) => {
     res.status(201).json({
       school: await School.findById(school._id).lean(),
       user: u,
-      message: 'School onboarded. School admin can sign in and create students, parents, teachers and drivers.',
+      message: institutionType === 'daycare'
+        ? 'Daycare onboarded. School admin can sign in and create children, parents and caregivers.'
+        : 'School onboarded. School admin can sign in and create students, parents, teachers and drivers.',
     });
   } catch (e) {
     res.status(500).json({ error: e.message });

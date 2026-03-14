@@ -11,7 +11,7 @@ const router = express.Router();
 router.get('/', auth, async (req, res) => {
   try {
     let query = {};
-    if (req.user.role === 'teacher') {
+    if (req.user.role === 'teacher' || req.user.role === 'caretaker') {
       query.teacherId = req.user._id;
     } else if (req.user.role === 'parent') {
       const children = await Child.find({ parentIds: req.user._id }).select('classId').lean();
@@ -52,7 +52,7 @@ router.get('/:id', auth, async (req, res) => {
       if (!classIds.includes(activity.classId?._id?.toString())) {
         return res.status(403).json({ error: 'Forbidden' });
       }
-    } else if (req.user.role === 'teacher' && activity.teacherId?._id?.toString() !== req.user._id?.toString()) {
+    } else if ((req.user.role === 'teacher' || req.user.role === 'caretaker') && activity.teacherId?._id?.toString() !== req.user._id?.toString()) {
       return res.status(403).json({ error: 'Forbidden' });
     }
     res.json(activity);
@@ -62,7 +62,7 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 /** Create activity – teacher only; notify parents (all or single) */
-router.post('/', auth, role('teacher'), async (req, res) => {
+router.post('/', auth, role('teacher', 'caretaker'), async (req, res) => {
   try {
     const { title, body, classId, scheduledAt, photos, recipientType, recipientParentId } = req.body;
     if (!title || !classId) return res.status(400).json({ error: 'Title and class required' });
