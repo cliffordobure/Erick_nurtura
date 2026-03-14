@@ -38,7 +38,7 @@ async function getMessaging() {
     messaging = admin.default.messaging();
     return messaging;
   } catch (e) {
-    console.warn('FCM init skipped:', e.message);
+    console.warn('[FCM] Init skipped:', e.message);
     return null;
   }
 }
@@ -54,9 +54,16 @@ export async function sendPushToUsers(userIds, title, body, data = {}) {
   if (!userIds?.length) return;
   const users = await User.find({ _id: { $in: userIds }, fcmToken: { $exists: true, $ne: '' } }).select('fcmToken').lean();
   const tokens = users.map(u => u.fcmToken).filter(Boolean);
-  if (!tokens.length) return;
+  if (!tokens.length) {
+    console.warn('[FCM] No FCM tokens for these users – have parents opened the app while logged in? User IDs:', userIds.slice(0, 5));
+    return;
+  }
   const m = await getMessaging();
-  if (!m) return;
+  if (!m) {
+    console.warn('[FCM] Push skipped: Firebase not configured (set FIREBASE_SERVICE_ACCOUNT_JSON or path).');
+    return;
+  }
+  if (process.env.NODE_ENV !== 'production') console.log('[FCM] Sending push to', tokens.length, 'device(s):', title);
   const payload = {
     notification: { title, body },
     data: { ...Object.fromEntries(Object.entries(data).map(([k, v]) => [String(k), String(v)])), title, body },

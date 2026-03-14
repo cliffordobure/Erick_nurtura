@@ -9,7 +9,9 @@ const transportSchema = new mongoose.Schema({
   status: { type: String, enum: ['scheduled', 'en_route', 'arrived', 'completed', 'cancelled'], default: 'scheduled' },
   eta: Date,
   notes: String,
-  notifiedParentAt: Date
+  notifiedParentAt: Date,
+  onBus: { type: Boolean, default: false },
+  leftSchoolNotifiedAt: Date
 }, { timestamps: true });
 
 export default mongoose.model('Transport', transportSchema);

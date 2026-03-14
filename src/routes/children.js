@@ -24,6 +24,8 @@ router.get('/', auth, async (req, res) => {
       else query.classId = { $in: [] };
     } else if (req.user.schoolId) {
       query.schoolId = req.user.schoolId;
+    } else if (req.user.role === 'driver') {
+      query._id = { $in: [] };
     }
     const children = await Child.find(query).populate('classId').populate('parentIds', 'name email phone').populate('schoolId', 'name type').lean();
     res.json(children);
