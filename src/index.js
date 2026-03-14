@@ -22,6 +22,7 @@ import schoolRoutes from './routes/schools.js';
 import schoolAdminRoutes from './routes/schoolAdmin.js';
 import uploadRoutes from './routes/upload.js';
 import activityRoutes from './routes/activities.js';
+import alarmRoutes from './routes/alarms.js';
 import { runActivityReminders } from './jobs/activityReminders.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -58,6 +59,7 @@ app.use('/api/schools', schoolRoutes);
 app.use('/api/school-admin', schoolAdminRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/activities', activityRoutes);
+app.use('/api/alarms', alarmRoutes);
 
 app.get('/api/health', (_, res) => res.json({ ok: true }));
 

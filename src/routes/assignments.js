@@ -3,6 +3,7 @@ import Assignment from '../models/Assignment.js';
 import Child from '../models/Child.js';
 import Notification from '../models/Notification.js';
 import { auth, role } from '../middleware/auth.js';
+import { sendPushToUsers } from '../services/fcm.js';
 
 const router = express.Router();
 
@@ -46,6 +47,7 @@ router.post('/', auth, role('teacher', 'caretaker', 'admin'), async (req, res) =
     }
     const io = req.app.get('io');
     if (io) parentIds.forEach(pid => io.to(`user:${pid}`).emit('notification', { title: 'New assignment', body: assignment.title }));
+    sendPushToUsers(parentIds, 'New assignment', assignment.title, { type: 'assignment', assignmentId: String(assignment._id) }).catch(console.error);
     res.status(201).json(assignment);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -71,6 +73,7 @@ router.post('/:id/send-reminder', auth, role('teacher', 'caretaker', 'admin'), a
     await assignment.save();
     const io = req.app.get('io');
     if (io) parentIds.forEach(pid => io.to(`user:${pid}`).emit('notification', { title: 'Assignment reminder', body: assignment.title }));
+    sendPushToUsers(parentIds, 'Reminder: ' + assignment.title, 'Due: ' + (assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString() : 'Soon'), { type: 'reminder', assignmentId: String(assignment._id) }).catch(console.error);
     res.json({ sent: true });
   } catch (e) {
     res.status(500).json({ error: e.message });

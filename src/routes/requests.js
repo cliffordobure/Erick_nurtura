@@ -2,6 +2,7 @@ import express from 'express';
 import Request from '../models/Request.js';
 import Notification from '../models/Notification.js';
 import { auth, role } from '../middleware/auth.js';
+import { sendPushToUsers } from '../services/fcm.js';
 
 const router = express.Router();
 
@@ -29,6 +30,7 @@ router.post('/', auth, role('teacher', 'caretaker', 'admin'), async (req, res) =
     });
     const io = req.app.get('io');
     if (io) io.to(`user:${toId}`).emit('notification', { title: 'Teacher request', body: title });
+    sendPushToUsers([toId], 'Request from teacher: ' + title, (body || '').slice(0, 100), { type: 'request', requestId: String(r._id) }).catch(console.error);
     res.status(201).json(r);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -45,6 +47,7 @@ router.patch('/:id/respond', auth, async (req, res) => {
     await r.save();
     const io = req.app.get('io');
     if (io) io.to(`user:${r.fromId}`).emit('notification', { title: 'Request responded', body: req.body.status });
+    sendPushToUsers([String(r.fromId)], 'Request responded', req.body.status, { type: 'request', requestId: String(r._id) }).catch(console.error);
     res.json(r);
   } catch (e) {
     res.status(500).json({ error: e.message });

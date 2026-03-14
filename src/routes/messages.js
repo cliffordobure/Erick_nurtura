@@ -2,6 +2,7 @@ import express from 'express';
 import Message from '../models/Message.js';
 import Notification from '../models/Notification.js';
 import { auth } from '../middleware/auth.js';
+import { sendPushToUsers } from '../services/fcm.js';
 
 const router = express.Router();
 
@@ -41,6 +42,8 @@ router.post('/', auth, async (req, res) => {
     });
     const io = req.app.get('io');
     if (io) io.to(`user:${recipientId}`).emit('message', { from: req.user.name, body: content.slice(0, 80) });
+    const pushTitle = 'New message from ' + req.user.name;
+    sendPushToUsers([recipientId], pushTitle, content.slice(0, 80), { type: 'message', messageId: String(message._id), senderId: String(req.user._id) }).catch(console.error);
     const populated = await Message.findById(message._id).populate('senderId', 'name').populate('childId', 'firstName lastName').lean();
     res.status(201).json(populated);
   } catch (e) {

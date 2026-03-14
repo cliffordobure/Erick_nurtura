@@ -7,6 +7,10 @@ jspm_packages/
 .env.*
 !.env.example
 
+# Firebase service account key (never commit)
+firebase-service-account.json
+*-firebase-adminsdk-*.json
+
 # Logs
 logs
 *.log

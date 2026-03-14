@@ -4,6 +4,7 @@ import Child from '../models/Child.js';
 import Class from '../models/Class.js';
 import Notification from '../models/Notification.js';
 import { auth, role } from '../middleware/auth.js';
+import { sendPushToUsers } from '../services/fcm.js';
 
 const router = express.Router();
 
@@ -97,6 +98,7 @@ router.post('/', auth, role('teacher', 'caretaker'), async (req, res) => {
     }
     const io = req.app.get('io');
     if (io) parentIds.forEach(pid => io.to(`user:${pid}`).emit('notification', { title: msg, body: (body || '').slice(0, 100) }));
+    sendPushToUsers(parentIds, msg, (body || '').slice(0, 150), { type: 'activity', activityId: String(activity._id) }).catch(console.error);
 
     const populated = await Activity.findById(activity._id)
       .populate('classId', 'name')

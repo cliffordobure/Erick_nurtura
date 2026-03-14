@@ -3,6 +3,7 @@ import Transport from '../models/Transport.js';
 import Child from '../models/Child.js';
 import Notification from '../models/Notification.js';
 import { auth, role } from '../middleware/auth.js';
+import { sendPushToUsers } from '../services/fcm.js';
 
 const router = express.Router();
 
@@ -44,6 +45,9 @@ router.post('/', auth, role('driver', 'admin'), async (req, res) => {
       }
       const io = req.app.get('io');
       if (io) child.parentIds.forEach(pid => io.to(`user:${pid}`).emit('notification', { title: transport.type === 'pickup' ? 'Pick-up' : 'Drop-off', body: new Date(transport.scheduledAt).toLocaleString() }));
+      const pushTitle = transport.type === 'pickup' ? 'Pick-up scheduled' : 'Drop-off scheduled';
+      const pushBody = `${transport.type} at ${new Date(transport.scheduledAt).toLocaleString()}`;
+      sendPushToUsers(child.parentIds.map(p => p.toString()), pushTitle, pushBody, { type: 'transport', transportId: String(transport._id) }).catch(console.error);
     }
     res.status(201).json(transport);
   } catch (e) {
@@ -77,6 +81,8 @@ router.patch('/:id', auth, role('driver', 'admin'), async (req, res) => {
         transport.notifiedParentAt = new Date();
         const io = req.app.get('io');
         if (io) transport.childId.parentIds.forEach(pid => io.to(`user:${pid}`).emit('notification', { title: status === 'en_route' ? 'On the way' : 'Arrived', body: transport.notes || '' }));
+        const pushTitle = status === 'en_route' ? 'Driver is on the way' : 'Driver has arrived';
+        sendPushToUsers(transport.childId.parentIds.map(p => p.toString()), pushTitle, transport.notes || (transport.eta ? 'ETA: ' + new Date(transport.eta).toLocaleTimeString() : ''), { type: 'transport', transportId: String(transport._id) }).catch(console.error);
       }
     }
     await transport.save();

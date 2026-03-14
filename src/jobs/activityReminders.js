@@ -1,6 +1,7 @@
 import Activity from '../models/Activity.js';
 import Child from '../models/Child.js';
 import Notification from '../models/Notification.js';
+import { sendPushToUsers } from '../services/fcm.js';
 
 /** Run every minute: find activities where scheduledAt <= now and reminderSent is false, notify parents, set reminderSent = true */
 export async function runActivityReminders(io) {
@@ -25,6 +26,7 @@ export async function runActivityReminders(io) {
       });
     }
     if (io) parentIds.forEach(pid => io.to(`user:${pid}`).emit('notification', { title, body }));
+    sendPushToUsers(parentIds, title, body, { type: 'reminder', activityId: String(a._id) }).catch(console.error);
     await Activity.updateOne({ _id: a._id }, { reminderSent: true });
   }
 }
