@@ -24,6 +24,10 @@ import uploadRoutes from './routes/upload.js';
 import activityRoutes from './routes/activities.js';
 import { runActivityReminders } from './jobs/activityReminders.js';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const uploadsDir = path.join(__dirname, '..', 'uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
@@ -33,10 +37,6 @@ const io = new Server(httpServer, {
 app.use(cors());
 app.use(express.json());
 app.use('/api/uploads', express.static(uploadsDir));
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const uploadsDir = path.join(__dirname, '..', 'uploads');
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
 await connectDB();
 await seedSystemAdmin();
