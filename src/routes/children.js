@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import express from 'express';
 import Child from '../models/Child.js';
 import { auth, role } from '../middleware/auth.js';
@@ -8,7 +9,8 @@ router.get('/', auth, async (req, res) => {
   try {
     let query = {};
     if (req.user.role === 'parent') {
-      query.parentIds = req.user._id;
+      const raw = req.user._id;
+      query.parentIds = raw && mongoose.Types.ObjectId.isValid(raw.toString()) ? new mongoose.Types.ObjectId(raw.toString()) : raw;
     } else if (req.user.schoolId) {
       query.schoolId = req.user.schoolId;
     }
