@@ -54,6 +54,39 @@ router.post('/users', async (req, res) => {
   }
 });
 
+/** Update a user (parent, teacher, driver) – school admin only */
+router.patch('/users/:id', async (req, res) => {
+  try {
+    const user = await User.findOne({ _id: req.params.id, schoolId: req.user.schoolId, role: { $in: ['parent', 'teacher', 'driver'] } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    const { name, phone, newPassword, childIds } = req.body;
+    if (name !== undefined) user.name = name;
+    if (phone !== undefined) user.phone = phone;
+    if (newPassword !== undefined && newPassword.length >= 6) {
+      user.password = newPassword;
+      await user.save();
+    } else {
+      await user.save();
+    }
+    if (user.role === 'parent' && childIds !== undefined && Array.isArray(childIds)) {
+      await Child.updateMany(
+        { schoolId: req.user.schoolId, parentIds: user._id },
+        { $pull: { parentIds: user._id } }
+      );
+      if (childIds.length > 0) {
+        await Child.updateMany(
+          { _id: { $in: childIds }, schoolId: req.user.schoolId },
+          { $addToSet: { parentIds: user._id } }
+        );
+      }
+    }
+    const u = await User.findById(user._id).select('-password').lean();
+    res.json(u);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 /** List all students (children) in my school */
 router.get('/students', async (req, res) => {
   try {
@@ -140,6 +173,25 @@ router.post('/classes', async (req, res) => {
     });
     const populated = await Class.findById(c._id).populate('teacherId', 'name email').lean();
     res.status(201).json(populated);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** Update a class – school admin only */
+router.patch('/classes/:id', async (req, res) => {
+  try {
+    const c = await Class.findOne({ _id: req.params.id, schoolId: req.user.schoolId });
+    if (!c) return res.status(404).json({ error: 'Class not found' });
+    const { name, grade, teacherId } = req.body;
+    if (name !== undefined) c.name = name;
+    if (grade !== undefined) c.grade = grade;
+    if (teacherId !== undefined) {
+      c.teacherId = teacherId ? (await User.findOne({ _id: teacherId, schoolId: req.user.schoolId, role: 'teacher' }))?._id : null;
+    }
+    await c.save();
+    const populated = await Class.findById(c._id).populate('teacherId', 'name email').lean();
+    res.json(populated);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
